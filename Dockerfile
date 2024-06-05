@@ -1,28 +1,32 @@
-FROM maven:3.8.4-openjdk-17 AS build
 
+
+# Estágio de construção
+FROM maven:3.8.5-openjdk-17-slim AS build
+
+# Defina o diretório de trabalho no contêiner
 WORKDIR /app
 
+# Copie o arquivo pom.xml e o código-fonte
 COPY demo/pom.xml .
 COPY demo/src /src
 
-
+# Baixe as dependências e compile o aplicativo
 RUN mvn clean package -DskipTests
 
-FROM openjdk:17-jdk-alpine
+# Estágio final
+FROM openjdk:17-jdk-slim
 
-COPY --from=build /app/target/demo-0.0.1-SNAPSHOT.jar app.jar
+# Defina o diretório de trabalho no contêiner
+WORKDIR /app
 
-ARG DATASOURCE_URL
-ARG DATASOURCE_USERNAME
-ARG DATASOURCE_PASSWORD
+# Copie o JAR do estágio de construção
+COPY --from=build /app/target/*.jar app.jar
 
-ENV SPRING_DATASOURCE_URL=${DATASOURCE_URL}
-ENV SPRING_DATASOURCE_USERNAME=${DATASOURCE_USERNAME}
-ENV SPRING_DATASOURCE_PASSWORD=${DATASOURCE_PASSWORD}
+# Defina a variável de ambiente PORT
+ENV PORT 8080
 
-RUN addgroup -S app && adduser -S app -G app
+# Exponha a porta 8080
+EXPOSE 8080
 
-USER app
-
-
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+# Comando para executar a aplicação
+CMD ["java", "-Dserver.port=${PORT}", "-jar", "app.jar"]
